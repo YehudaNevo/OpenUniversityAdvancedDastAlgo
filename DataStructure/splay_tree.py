@@ -1,169 +1,146 @@
 from PrettyPrint import PrettyPrintTree
 
 
-class Node:
-    def __init__(self, key):
-        self.key = key
+class TreeNode:
+    def __init__(self, value):
+        self.value = value
         self.parent = None
-        self.left = None
-        self.right = None
+        self.leftChild = None
+        self.rightChild = None
 
     def __str__(self):
-        return f"{self.key}"
+        return f"{self.value}"
+
 
 class SplayTree:
     def __init__(self):
         self.root = None
 
-    def _leftRotate(self, x):
-        # Rotate x to the left
-        y = x.right
-        x.right = y.left
-        if y.left:
-            y.left.parent = x
-        y.parent = x.parent
-        if not x.parent:
-            self.root = y
-        elif x == x.parent.left:
-            x.parent.left = y
-        else:
-            x.parent.right = y
-        y.left = x
-        x.parent = y
+    def _rotate(self, node, direction):
+        if direction == 'left':
+            other = node.rightChild
+            node.rightChild = other.leftChild
+            if other.leftChild:
+                other.leftChild.parent = node
+            other.leftChild = node
+        else:  # direction == 'right'
+            other = node.leftChild
+            node.leftChild = other.rightChild
+            if other.rightChild:
+                other.rightChild.parent = node
+            other.rightChild = node
 
-    def _rightRotate(self, x):
-        # Rotate x to the right
-        y = x.left
-        x.left = y.right
-        if y.right:
-            y.right.parent = x
-        y.parent = x.parent
-        if not x.parent:
-            self.root = y
-        elif x == x.parent.right:
-            x.parent.right = y
+        other.parent = node.parent
+        node.parent = other
+        if not other.parent:
+            self.root = other
         else:
-            x.parent.left = y
-        y.right = x
-        x.parent = y
-
-    def splay(self, node):
-        while node != self.root:
-            # Case: Node's parent is root (Zig or Zag)
-            if node.parent == self.root:
-                if node == node.parent.left:  # Zig rotation
-                    self._rightRotate(node.parent)
-                else:  # Zag rotation
-                    self._leftRotate(node.parent)
+            if other.parent.leftChild == node:
+                other.parent.leftChild = other
             else:
-                # Determine the grandparent
+                other.parent.rightChild = other
+
+    def leftRotate(self, node):
+        self._rotate(node, 'left')
+
+    def rightRotate(self, node):
+        self._rotate(node, 'right')
+
+    def performSplay(self, node):
+        while node != self.root:
+            if node.parent == self.root:
+                if node == node.parent.leftChild:
+                    self.rightRotate(node.parent)
+                else:
+                    self.leftRotate(node.parent)
+            else:
                 grandparent = node.parent.parent
                 parent = node.parent
-
-                # Zig-Zig (Left-Left) Case
-                if parent.left == node and grandparent.left == parent:
-                    self._rightRotate(grandparent)
-                    self._rightRotate(parent)
-                # Zag-Zag (Right-Right) Case
-                elif parent.right == node and grandparent.right == parent:
-                    self._leftRotate(grandparent)
-                    self._leftRotate(parent)
-                # Zig-Zag (Left-Right) Case
-                elif parent.right == node and grandparent.left == parent:
-                    self._leftRotate(parent)
-                    self._rightRotate(grandparent)
-                # Zag-Zig (Right-Left) Case
+                if parent.leftChild == node and grandparent.leftChild == parent:
+                    self.rightRotate(grandparent)
+                    self.rightRotate(parent)
+                elif parent.rightChild == node and grandparent.rightChild == parent:
+                    self.leftRotate(grandparent)
+                    self.leftRotate(parent)
+                elif parent.rightChild == node and grandparent.leftChild == parent:
+                    self.leftRotate(parent)
+                    self.rightRotate(grandparent)
                 else:
-                    self._rightRotate(parent)
-                    self._leftRotate(grandparent)
+                    self.rightRotate(parent)
+                    self.leftRotate(grandparent)
 
-
-    def insert(self, key):
-        # Insert key into the tree
-        node = Node(key)
-        y = None
-        x = self.root
-        while x:
-            y = x
-            if node.key < x.key:
-                x = x.left
+    def insert(self, value):
+        newNode = TreeNode(value)
+        temp = None
+        currentNode = self.root
+        while currentNode:
+            temp = currentNode
+            if newNode.value < currentNode.value:
+                currentNode = currentNode.leftChild
             else:
-                x = x.right
-        node.parent = y
-        if not y:
-            self.root = node
-        elif node.key < y.key:
-            y.left = node
+                currentNode = currentNode.rightChild
+        newNode.parent = temp
+        if not temp:
+            self.root = newNode
+        elif newNode.value < temp.value:
+            temp.leftChild = newNode
         else:
-            y.right = node
-        self.splay(node)
+            temp.rightChild = newNode
+        self.performSplay(newNode)
 
-    def find(self, key):
-        # Find a node with the given key
-        x = self.root
-        while x and x.key != key:
-            if key < x.key:
-                x = x.left
+    def find(self, value):
+        currentNode = self.root
+        while currentNode and currentNode.value != value:
+            if value < currentNode.value:
+                currentNode = currentNode.leftChild
             else:
-                x = x.right
-        if x:
-            self.splay(x)
-        return x
+                currentNode = currentNode.rightChild
+        if currentNode:
+            self.performSplay(currentNode)
+        return currentNode
 
-    def print_tree(self):
-        def get_children(node):
+    def printTree(self):
+        def getChildren(node):
             children = []
-            if node.left:
-                node.left.is_left_child = True  # Annotate the node as a left child
-                children.append(node.left)
-            if node.right:
-                node.right.is_left_child = False  # Annotate the node as a right child
-                children.append(node.right)
+            if node.leftChild:
+                node.leftChild.isLeftChild = True
+                children.append(node.leftChild)
+            if node.rightChild:
+                node.rightChild.isLeftChild = False
+                children.append(node.rightChild)
             return children
 
-        def get_value(node):
-            if hasattr(node, "is_left_child"):
-                child_direction = "L" if node.is_left_child else "R"
-                return f"{child_direction}: {str(node.key)}"
-            return str(node.key)
+        def getNodeValue(node):
+            if hasattr(node, "isLeftChild"):
+                direction = "L" if node.isLeftChild else "R"
+                return f"{direction}: {str(node.value)}"
+            return str(node.value)
 
-        pt = PrettyPrintTree(get_children, get_value)
-        pt(self.root)
-
-
-
-
-
-
-
-
-
+        prettyPrint = PrettyPrintTree(getChildren, getNodeValue)
+        prettyPrint(self.root)
 
 
 if __name__ == "__main__":
-    tree = SplayTree()
+    splayTree = SplayTree()
     while True:
         print("\nOperations:")
         print("1. Insert")
         print("2. Find")
         print("3. Quit")
-        choice = input("Choose an operation: ")
-        if choice == "1":
-            key = int(input("Enter key to insert: "))
-            tree.insert(key)
-            tree.print_tree()
-        elif choice == "2":
-            key = int(input("Enter key to find: "))
-            result = tree.find(key)
+        operation = input("Choose an operation: ")
+        if operation == "1":
+            value = int(input("Enter value to insert: "))
+            splayTree.insert(value)
+            splayTree.printTree()
+        elif operation == "2":
+            value = int(input("Enter value to find: "))
+            result = splayTree.find(value)
             if result:
-                print(f"Node {key} found.")
+                print(f"Value {value} found.")
             else:
-                print(f"Node {key} not found.")
-            tree.print_tree()
-        elif choice == "3":
+                print(f"Value {value} not found.")
+            splayTree.printTree()
+        elif operation == "3":
             break
         else:
             print("Invalid choice. Please choose again.")
-
-
-
